@@ -1,4 +1,13 @@
-"""Frigate Media Source."""
+"""Frigate Media Source. """
+
+"""Modifications apportées """"
+"""" On filtre les cameras qui ne s'appellent pas 'parking'
+"""" --> Fonction _build_camera_sources
+"""" On n'affiche pas un certain nombre de types qui ne nous interessent pas : 
+""""  _build_label_sources, _build_zone_sources, _build_date_sources
+"""" Enfin pour la partie "recording", on ne prends que les recording de notre camera
+"""" _get_camera_recording_folders
+""""""""""""""""""
 
 from __future__ import annotations
 
@@ -300,6 +309,7 @@ class EventSearchIdentifier(Identifier):
             return None
 
         try:
+
             return cls(
                 frigate_instance_id=cls._get_index(parts, 0),
                 frigate_media_type=FrigateMediaType(cls._get_index(parts, 2)),
@@ -640,18 +650,6 @@ class FrigateMediaSource(MediaSource):
                                 thumbnail=None,
                                 children=[],
                             ),
-                            BrowseMediaSource(
-                                domain=DOMAIN,
-                                identifier=str(snapshots_identifier),
-                                media_class=MediaClass.DIRECTORY,
-                                children_media_class=snapshots_identifier.media_class,
-                                media_content_type=snapshots_identifier.media_type,
-                                title=f"Snapshots [{config_entry.title}]",
-                                can_play=False,
-                                can_expand=True,
-                                thumbnail=None,
-                                children=[],
-                            ),
                         ],
                     )
             return base
@@ -877,33 +875,36 @@ class FrigateMediaSource(MediaSource):
     ) -> list[BrowseMediaSource]:
         sources = []
         for camera in summary_data.cameras:
-            count = self._count_by(
-                summary_data,
-                attr.evolve(
-                    identifier,
-                    camera=camera,
-                ),
-            )
-            if count in (0, shown_event_count):
+            if camera != "parking":
                 continue
-            sources.append(
-                BrowseMediaSource(
-                    domain=DOMAIN,
-                    identifier=str(
-                        attr.evolve(
-                            identifier,
-                            name=f"{identifier.name}.{camera}",
-                            camera=camera,
-                        )
+            else:
+                count = self._count_by(
+                    summary_data,
+                    attr.evolve(
+                        identifier,
+                        camera=camera,
                     ),
-                    media_class=MediaClass.DIRECTORY,
-                    children_media_class=MediaClass.DIRECTORY,
-                    media_content_type=identifier.media_type,
-                    title=f"{get_friendly_name(camera)} ({count})",
-                    can_play=False,
-                    can_expand=True,
-                    thumbnail=None,
                 )
+                if count in (0, shown_event_count):
+                    continue
+                sources.append(
+                    BrowseMediaSource(
+                        domain=DOMAIN,
+                        identifier=str(
+                            attr.evolve(
+                                identifier,
+                                name=f"{identifier.name}.{camera}",
+                                camera=camera,
+                            )
+                        ),
+                        media_class=MediaClass.DIRECTORY,
+                        children_media_class=MediaClass.DIRECTORY,
+                        media_content_type=identifier.media_type,
+                        title=f"{get_friendly_name(camera)} ({count})",
+                        can_play=False,
+                        can_expand=True,
+                        thumbnail=None,
+                    )
             )
         return sources
 
@@ -914,6 +915,10 @@ class FrigateMediaSource(MediaSource):
         shown_event_count: int,
     ) -> list[BrowseMediaSource]:
         sources = []
+
+        "modification pour la gestion du parking, on n'affiche pas les types d'elements"
+        return sources
+
         for label in summary_data.labels:
             count = self._count_by(
                 summary_data,
@@ -953,6 +958,10 @@ class FrigateMediaSource(MediaSource):
     ) -> list[BrowseMediaSource]:
         """Build zone media sources."""
         sources = []
+
+        "modification pour la gestion du parking, on n'affiche pas les zones"
+        return sources
+
         for zone in summary_data.zones:
             count = self._count_by(summary_data, attr.evolve(identifier, zone=zone))
             if count in (0, shown_event_count):
@@ -986,6 +995,9 @@ class FrigateMediaSource(MediaSource):
     ) -> list[BrowseMediaSource]:
         """Build data media sources."""
         sources = []
+
+        "modification pour la gestion du parking, on n'affiche pas les dates"
+        return sources
 
         now = dt.datetime.now(DEFAULT_TIME_ZONE)
         today = now.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -1281,24 +1293,25 @@ class FrigateMediaSource(MediaSource):
         base.children = []
 
         for camera in config["cameras"].keys():
-            base.children.append(
-                BrowseMediaSource(
-                    domain=DOMAIN,
-                    identifier=str(
-                        attr.evolve(
-                            identifier,
-                            camera=camera,
-                        )
-                    ),
-                    media_class=MediaClass.DIRECTORY,
-                    children_media_class=MediaClass.DIRECTORY,
-                    media_content_type=identifier.media_type,
-                    title=get_friendly_name(camera),
-                    can_play=False,
-                    can_expand=True,
-                    thumbnail=None,
+            if camera == "parking":
+                base.children.append(
+                    BrowseMediaSource(
+                        domain=DOMAIN,
+                        identifier=str(
+                            attr.evolve(
+                                identifier,
+                                camera=camera,
+                            )
+                        ),
+                        media_class=MediaClass.DIRECTORY,
+                        children_media_class=MediaClass.DIRECTORY,
+                        media_content_type=identifier.media_type,
+                        title=get_friendly_name(camera),
+                        can_play=False,
+                        can_expand=True,
+                        thumbnail=None,
+                    )
                 )
-            )
 
         return base
 
